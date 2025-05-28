@@ -1,7 +1,8 @@
 url
 https://forums.developer.nvidia.com/t/terrible-performance-from-very-simple-kernel/195076
 notes
-nvcc -o withG -G test.cu
-nvcc -o noG test.cu
-nsys profile --stats=true ./withG  
-nsys profile --stats=true ./noG
+The buggy and fixed version code of the CUDA program are the same, only the difference lies in whether the - G tag is used during compilation
+nvcc -o buggy -G buggy.cu
+nvcc -o fixed fixed.cu
+nsys profile --stats=true ./buggy  
+nsys profile --stats=true ./fixed

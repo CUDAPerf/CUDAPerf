@@ -1,27 +1,12 @@
 #include <iostream>
 #include <cstdlib>
 
-const int my_bitset_size = 20000/(32);
-const int my_bunch_size = 100000;
+const int my_bitset_size = 512;
+const int my_bunch_size = 1024*2;
 typedef unsigned uint;
 
-//using one thread per bitset in the bunch
-__global__ void kernelXOR(uint * bitset, uint * bunch, int * set_bits, int bitset_size, int bunch_size) {
-
-    int tid = blockIdx.x*blockDim.x + threadIdx.x;
-
-    if (tid < bunch_size){      // 1 Thread for each bitset in the 'bunch'
-        int sum = 0;
-        uint xor_res = 0;
-        for (int i = 0; i < bitset_size; ++i){  // Iterate through every uint-block of the bitsets
-            xor_res = bitset[i] ^ bunch[bitset_size * tid + i];
-            sum += __popc(xor_res);
-        }
-        set_bits[tid] = sum;
-    }
-}
-
 const int nTPB = 256;
+
 // one block per bitset, multiple bitsets per block
 __global__ void kernelXOR_imp(const uint * __restrict__  bitset, const uint * __restrict__  bunch, int * __restrict__  set_bits, int bitset_size, int bunch_size) {
 
@@ -44,7 +29,7 @@ __global__ void kernelXOR_imp(const uint * __restrict__  bitset, const uint * __
 
 
 
-int main(){
+int test(){
 
 // data setup
 
@@ -62,24 +47,24 @@ int main(){
   cudaMalloc(&d_r,  my_bunch_size*sizeof(int));
   cudaMemcpy(d_cbitset, h_cbitset, my_bitset_size*sizeof(uint), cudaMemcpyHostToDevice);
   cudaMemcpy(d_bitsets, h_bitsets, my_bitset_size*my_bunch_size*sizeof(uint), cudaMemcpyHostToDevice);
-// original
-
-// Grid/Blocks used for kernel invocation
-  dim3 block(32);
-  dim3 grid((my_bunch_size / 31) + 32);
-
-  kernelXOR<<<grid, block>>>(d_cbitset, d_bitsets, d_r, my_bitset_size, my_bunch_size);
-  cudaMemcpy(h_r, d_r, my_bunch_size*sizeof(int), cudaMemcpyDeviceToHost);
 
 
-// improved
   dim3 iblock(nTPB);
-  dim3 igrid(640);
+  dim3 igrid((my_bunch_size-1)/nTPB+1);
+
   kernelXOR_imp<<<igrid, iblock>>>(d_cbitset, d_bitsets, d_r, my_bitset_size, my_bunch_size);
   cudaMemcpy(h_ri, d_r, my_bunch_size*sizeof(int), cudaMemcpyDeviceToHost);
 
   for (int i = 0; i < my_bunch_size; i++)
     if (h_r[i] != h_ri[i]) {std::cout << "mismatch at i: " << i << " was: " << h_ri[i] << " should be: " << h_r[i] << std::endl; return 0;}
   std::cout << "Results match." << std::endl;
+  return 0;
+}
+
+int main(){
+  cudaSetDevice(1);
+  for(int i = 0; i < 10; i++){
+    test();
+  }
   return 0;
 }
