@@ -1,0 +1,2 @@
+# benchmark
+The benchmark is organized by causes, with each directory named after the category of the corresponding performance problem. For each case, *info.md* records the link to the original post, compilation and execution instructions, and additional notes. *test.cu* contains the test code reproduced from the post, while *buggy.cu* and *fixed.cu* contain the code with the performance problem and its fixed version, respectively, for easier individual inspection.
